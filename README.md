@@ -3,9 +3,9 @@
 ## environments
 
 - OS
- - AmazonLinux2
+  - AmazonLinux2
 - node 
- - v19.4.0
+  - v19.4.0
 
 ## params
 
