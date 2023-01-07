@@ -2,6 +2,9 @@ const https = require("https")
 const express = require("express")
 const app = express()
 const qrCode = require("qrcode")
+const base64 = require("urlsafe-base64")
+const aws = require("aws-sdk")
+const s3 = new aws.S3()
 
 require('dotenv').config()
 
@@ -13,19 +16,46 @@ app.use(express.urlencoded({
   extended: true
 }))
 
+// AWSの設定ファイル
+const s3Config = {
+  region: process.env.S3_REGION
+}
+aws.config.update(s3Config);
+
 // QRコード作成関数
 const generateQrcode = async (str, width) => {
   return new Promise((resolve, reject) => {
     const opts = {
       width: width || 100
     }
-
-    qrCode.toFile('./img/test.png', str, opts, (err, string) => {
+    qrCode.toDataURL(str, opts, (err, url) => {
       if(err){
-        reject(false)
+        reject(new Error(err.message))
       }else{
-        resolve(true)
+        const decodeData = base64.decode(url.replace("data:image/png;base64,", ""))
+        resolve(decodeData)
       }
+    })
+  }) 
+}
+
+// S3アップロード関数
+const s3Upload = async (decodeData) => {
+  const params = {
+    Bucket: process.env.S3_BACKET,
+    Key: process.env.S3_KEY,
+    Body: decodeData,
+    ContentType: "image/png"
+  }
+  return new Promise((resolve, reject) => {
+    s3.putObject(params,(err, data) => {
+      if(err){
+          console.log("failed to upload")
+          reject(new Error(err.message))
+          return
+      }
+      console.log("complete upload")
+      resolve()
     })
   }) 
 }
@@ -35,19 +65,20 @@ app.get("/healthcheck", (req, res) => {
 })
 
 app.post("/webhook", async (req, res) => {
-  // ユーザーがボットにメッセージを送った場合、返信メッセージを送る
   if (req.body.events[0].type === "message") {
     // QRコードを作成
-    const str = 'test'
+    const str = 'ラインボット作ったよ！！'
     const width = 200
-    const status = await generateQrcode(str, width)
+    const qrcodeBuffer = await generateQrcode(str, width)
 
-    let messages = []
-    if(status){
-      messages.push({ "type": "text", "text": "success to generate the Qrcode." })
-    }else{
-      messages.push({ "type": "text", "text": "failed to generate the Qrcode." })
-    }
+    // S3にアップロード
+    await s3Upload(qrcodeBuffer)
+
+    const messages = [
+      { "type": "text", "text": "以下のリンクがQRコードのリンクになります。" },
+      { "type": "text", "text": "https://runrunrinmaru.s3.ap-northeast-1.amazonaws.com/qrcode/qrcode.png" }
+    ]
+
     const dataString = JSON.stringify({
       replyToken: req.body.events[0].replyToken,
       messages: messages
