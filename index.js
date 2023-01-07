@@ -69,66 +69,65 @@ app.get("/healthcheck", (req, res) => {
 })
 
 app.post("/webhook", async (req, res) => {
-  if (req.body.events[0].type === "message") {
-    // QRコードを作成
-    const str = req.body.events[0].message.text || 'make qrcode-line-bot'
-    const width = 200
-    const qrcodeBuffer = await generateQrcode(str, width)
+  if (req.body.events[0].type === "message" && req.body.events[0].message.text) {
+    const words = req.body.events[0].message.text.split('\n')
+    if(words[0] === 'qrcode'){
+      // QRコードを作成
+      const str = req.body.events[0].message.text
+      const width = 200
+      const qrcodeBuffer = await generateQrcode(str, width)
 
-    // S3にアップロード
-    const fileName = crypto.randomBytes(20).toString('hex') + '.png'
-    await s3Upload(qrcodeBuffer, fileName)
+      // S3にアップロード
+      const fileName = crypto.randomBytes(20).toString('hex') + '.png'
+      await s3Upload(qrcodeBuffer, fileName)
 
-    // QRコードのURL
-    const qrcodeUrl = `${s3ImgUrl}/${s3Key}/${fileName}`
+      // QRコードのURL
+      const qrcodeUrl = `${s3ImgUrl}/${s3Key}/${fileName}`
 
-    const messages = [
-      { 
-        "type": "text",
-        "text": "以下のリンクがQRコードのリンクになります。"
-      },
-      {
-        "type": "image",
-        "originalContentUrl": qrcodeUrl, 
-        "previewImageUrl": qrcodeUrl
-      }
-    ]
+      const messages = [
+        {
+          "type": "image",
+          "originalContentUrl": qrcodeUrl, 
+          "previewImageUrl": qrcodeUrl
+        }
+      ]
 
-    const dataString = JSON.stringify({
-      replyToken: req.body.events[0].replyToken,
-      messages: messages
-    })
-
-    // リクエストヘッダー
-    const headers = {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + TOKEN
-    }
-
-    // リクエストに渡すオプション
-    const webhookOptions = {
-      "hostname": "api.line.me",
-      "path": "/v2/bot/message/reply",
-      "method": "POST",
-      "headers": headers,
-      "body": dataString
-    }
-
-    // リクエストの定義
-    const request = https.request(webhookOptions, (res) => {
-      res.on("data", (d) => {
-        process.stdout.write(d)
+      const dataString = JSON.stringify({
+        replyToken: req.body.events[0].replyToken,
+        messages: messages
       })
-    })
 
-    // エラーをハンドル
-    request.on("error", (err) => {
-      console.error(err)
-    })
+      // リクエストヘッダー
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + TOKEN
+      }
 
-    // データを送信
-    request.write(dataString)
-    request.end()
+      // リクエストに渡すオプション
+      const webhookOptions = {
+        "hostname": "api.line.me",
+        "path": "/v2/bot/message/reply",
+        "method": "POST",
+        "headers": headers,
+        "body": dataString
+      }
+
+      // リクエストの定義
+      const request = https.request(webhookOptions, (res) => {
+        res.on("data", (d) => {
+          process.stdout.write(d)
+        })
+      })
+
+      // エラーをハンドル
+      request.on("error", (err) => {
+        console.error(err)
+      })
+
+      // データを送信
+      request.write(dataString)
+      request.end()
+    }
   }
 })
 
