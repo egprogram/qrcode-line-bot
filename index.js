@@ -3,13 +3,17 @@ const express = require("express")
 const app = express()
 const qrCode = require("qrcode")
 const base64 = require("urlsafe-base64")
+const crypto = require("crypto");
 const aws = require("aws-sdk")
 const s3 = new aws.S3()
 
 require('dotenv').config()
 
+// 環境変数を読み込む
 const PORT = process.env.PORT || 3000
 const TOKEN = process.env.LINE_ACCESS_TOKEN
+const s3ImgUrl = process.env.S3_IMG_URL
+const s3Key = process.env.S3_KEY
 
 app.use(express.json())
 app.use(express.urlencoded({
@@ -40,10 +44,10 @@ const generateQrcode = async (str, width) => {
 }
 
 // S3アップロード関数
-const s3Upload = async (decodeData) => {
+const s3Upload = async (decodeData, fileName) => {
   const params = {
     Bucket: process.env.S3_BACKET,
-    Key: process.env.S3_KEY,
+    Key: `${s3Key}/${fileName}`,
     Body: decodeData,
     ContentType: "image/png"
   }
@@ -67,16 +71,27 @@ app.get("/healthcheck", (req, res) => {
 app.post("/webhook", async (req, res) => {
   if (req.body.events[0].type === "message") {
     // QRコードを作成
-    const str = 'ラインボット作ったよ！！'
+    const str = req.body.events[0].message.text || 'make qrcode-line-bot'
     const width = 200
     const qrcodeBuffer = await generateQrcode(str, width)
 
     // S3にアップロード
-    await s3Upload(qrcodeBuffer)
+    const fileName = crypto.randomBytes(20).toString('hex') + '.png'
+    await s3Upload(qrcodeBuffer, fileName)
+
+    // QRコードのURL
+    const qrcodeUrl = `${s3ImgUrl}/${s3Key}/${fileName}`
 
     const messages = [
-      { "type": "text", "text": "以下のリンクがQRコードのリンクになります。" },
-      { "type": "text", "text": "https://runrunrinmaru.s3.ap-northeast-1.amazonaws.com/qrcode/qrcode.png" }
+      { 
+        "type": "text",
+        "text": "以下のリンクがQRコードのリンクになります。"
+      },
+      {
+        "type": "image",
+        "originalContentUrl": qrcodeUrl, 
+        "previewImageUrl": qrcodeUrl
+      }
     ]
 
     const dataString = JSON.stringify({
