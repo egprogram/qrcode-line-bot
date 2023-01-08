@@ -2,3 +2,4 @@ node_modules
 img
 .env
 .serverless
+prd.yml
