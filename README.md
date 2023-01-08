@@ -25,3 +25,21 @@ qrcode (Required)
 target string (Required)
 length (INT) 
 ```
+
+## Use software
+
+### environments
+
+- AWS
+  - S3
+  - Lambda
+    - Node.js 18.x
+    
+### the way to build
+
+- aws cli install [https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/getting-started-install.html]
+- git clone https://github.com/egprogram/qrcode-line-bot
+- write prd.yml
+- npx serverless deploy
+
+
