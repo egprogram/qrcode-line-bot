@@ -1,0 +1,22 @@
+service: qrcode-line-bot
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: prd
+  region: ap-northeast-1
+custom:
+  environment:
+    prd: ${file(./prd.yml)}
+functions:
+  app:
+    handler: index.handler
+    environment:
+        LINE_ACCESS_TOKEN: ${self:custom.environment.prd.LINE_ACCESS_TOKEN}
+        S3_REGION: ${self:custom.environment.prd.S3_REGION}
+        S3_BACKET: ${self:custom.environment.prd.S3_BACKET}
+        S3_KEY: ${self:custom.environment.prd.S3_KEY}
+        S3_IMG_URL: ${self:custom.environment.prd.S3_IMG_URL}
+    events:
+       - httpApi:
+          path: /webhook
+          method: post

@@ -1,3 +1,4 @@
+const serverless = require('serverless-http');
 const https = require("https")
 const express = require("express")
 const app = express()
@@ -64,17 +65,13 @@ const s3Upload = async (decodeData, fileName) => {
   }) 
 }
 
-app.get("/healthcheck", (req, res) => {
-  res.send({ status: true })
-})
-
 app.post("/webhook", async (req, res) => {
   if (req.body.events[0].type === "message" && req.body.events[0].message.text) {
     const words = req.body.events[0].message.text.split('\n')
     if(words[0] === 'qrcode'){
       // QRコードを作成
-      const str = req.body.events[0].message.text
-      const width = 200
+      const str = words[1]
+      const width = words[2] || 100 // デフォルトを100x100pxにする
       const qrcodeBuffer = await generateQrcode(str, width)
 
       // S3にアップロード
@@ -131,6 +128,4 @@ app.post("/webhook", async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Example app listening at http://localhost:${PORT}`)
-})
+module.exports.handler = serverless(app)
