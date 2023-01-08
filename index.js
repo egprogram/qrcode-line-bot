@@ -1,3 +1,4 @@
+const serverless = require('serverless-http');
 const https = require("https")
 const express = require("express")
 const app = express()
@@ -134,3 +135,5 @@ app.post("/webhook", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening at http://localhost:${PORT}`)
 })
+
+module.exports.handler = serverless(app)

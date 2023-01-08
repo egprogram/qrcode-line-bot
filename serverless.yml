@@ -1,0 +1,11 @@
+service: qrcode-line-bot
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ap-northeast-1
+functions:
+  app:
+    handler: index.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
